@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - supfile-network
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    volumes:
+      - ./:/var/www/html
+      - storage_volume:/var/www/html/storage/app/supfile
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=supfile
+      - DB_USERNAME=supfile_user
+      - DB_PASSWORD=supfile_pass
+    depends_on:
+      - db
+    networks:
+      - supfile-network
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: supfile
+      POSTGRES_USER: supfile_user
+      POSTGRES_PASSWORD: supfile_pass
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - supfile-network
+
+networks:
+  supfile-network:
+    driver: bridge
+
+volumes:
+  db_data:
+  storage_volume:
