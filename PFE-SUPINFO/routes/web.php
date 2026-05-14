@@ -27,4 +27,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
         return "Dashboard";
     })->name('dashboard');
+
+    // UI Mock Routes for Week 2 (File Manager)
+    Route::get('/files', function (\Illuminate\Http\Request $request) {
+        $userAgent = $request->header('User-Agent');
+        $isMobile = preg_match("/(android|avantgo|blackberry|bolt|boost|cricket|docomo|fone|hiptop|mini|mobi|palm|phone|pie|tablet|up\.browser|up\.link|webos|wos)/i", $userAgent);
+        
+        if ($isMobile) {
+            return view('mobile.files.index');
+        }
+        return view('web.files.index');
+    })->name('files.index');
 });
