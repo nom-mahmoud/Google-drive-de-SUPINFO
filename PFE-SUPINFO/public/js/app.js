@@ -132,4 +132,35 @@ document.addEventListener('DOMContentLoaded', () => {
     if (fab && mobileFileInput) {
         fab.addEventListener('click', () => mobileFileInput.click());
     }
+
+    // =========================================================
+    // 7. THEME TOGGLE (Light / Dark)
+    // =========================================================
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeToggleMobile = document.getElementById('theme-toggle-mobile');
+
+    function toggleTheme() {
+        const isDark = document.documentElement.classList.toggle('dark-theme');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        updateThemeIcons();
+    }
+
+    function updateThemeIcons() {
+        const isDark = document.documentElement.classList.contains('dark-theme');
+        const sunIcons = document.querySelectorAll('#sun-icon, .sun-icon');
+        const moonIcons = document.querySelectorAll('#moon-icon, .moon-icon');
+
+        sunIcons.forEach(icon => icon.style.display = isDark ? 'block' : 'none');
+        moonIcons.forEach(icon => icon.style.display = isDark ? 'none' : 'block');
+    }
+
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+    if (themeToggleMobile) {
+        themeToggleMobile.addEventListener('click', toggleTheme);
+    }
+
+    // Initialize icons state
+    updateThemeIcons();
 });
