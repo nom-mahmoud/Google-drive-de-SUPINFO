@@ -28,14 +28,14 @@ Route::middleware('auth')->group(function () {
         return "Dashboard";
     })->name('dashboard');
 
-    // UI Mock Routes for Week 2 (File Manager)
-    Route::get('/files', function (\Illuminate\Http\Request $request) {
-        $userAgent = $request->header('User-Agent');
-        $isMobile = preg_match("/(android|avantgo|blackberry|bolt|boost|cricket|docomo|fone|hiptop|mini|mobi|palm|phone|pie|tablet|up\.browser|up\.link|webos|wos)/i", $userAgent);
-        
-        if ($isMobile) {
-            return view('mobile.files.index');
-        }
-        return view('web.files.index');
-    })->name('files.index');
+    // File & Folder Management (Week 2)
+    Route::get('/files', [App\Http\Controllers\FileController::class, 'index'])->name('files.index');
+    Route::post('/files/upload', [App\Http\Controllers\FileController::class, 'store'])->name('files.upload');
+    Route::get('/files/download/{file}', [App\Http\Controllers\FileController::class, 'download'])->name('files.download');
+    Route::delete('/files/{file}', [App\Http\Controllers\FileController::class, 'destroy'])->name('files.destroy');
+    Route::get('/trash', [App\Http\Controllers\FileController::class, 'trash'])->name('files.trash');
+
+    Route::post('/folders', [App\Http\Controllers\FolderController::class, 'store'])->name('folders.store');
+    Route::delete('/folders/{folder}', [App\Http\Controllers\FolderController::class, 'destroy'])->name('folders.destroy');
+    Route::post('/folders/{id}/restore', [App\Http\Controllers\FolderController::class, 'restore'])->name('folders.restore');
 });
