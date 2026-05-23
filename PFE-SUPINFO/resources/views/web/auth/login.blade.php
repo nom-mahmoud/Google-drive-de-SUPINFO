@@ -23,7 +23,7 @@
             <div class="form-group">
                 <div class="flex items-center justify-between" style="margin-bottom: 0.5rem;">
                     <label for="password" class="form-label" style="margin-bottom: 0;">Mot de passe</label>
-                    <a href="#" style="font-size: 0.875rem;">Mot de passe oublié ?</a>
+                    <a href="{{ route('password.request') }}" style="font-size: 0.875rem;">Mot de passe oublié ?</a>
                 </div>
                 <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" required>
             </div>
