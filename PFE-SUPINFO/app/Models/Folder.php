@@ -35,4 +35,9 @@ class Folder extends Model
     {
         return $this->hasMany(File::class);
     }
+
+    public function shareLinks()
+    {
+        return $this->hasMany(ShareLink::class);
+    }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Folder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class FolderController extends Controller
 {
@@ -38,6 +39,42 @@ class FolderController extends Controller
         $folder->restore();
 
         return back()->with('success', 'Dossier restauré.');
+    }
+
+    public function downloadZip(Folder $folder)
+    {
+        $this->authorizeAccess($folder);
+
+        $zip = new \ZipArchive();
+        $zipFileName = tempnam(sys_get_temp_dir(), 'supfile-zip-') . '.zip';
+
+        if ($zip->open($zipFileName, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return back()->withErrors(['error' => 'Impossible de générer le fichier ZIP.']);
+        }
+
+        $this->addFolderToZip($folder, $zip, '');
+
+        $zip->close();
+
+        return response()->download($zipFileName, $folder->name . '.zip')->deleteFileAfterSend(true);
+    }
+
+    private function addFolderToZip(Folder $folder, \ZipArchive $zip, $parentPath)
+    {
+        $folderPath = $parentPath ? $parentPath . '/' . $folder->name : $folder->name;
+        
+        $zip->addEmptyDir($folderPath);
+
+        foreach ($folder->files as $file) {
+            $storagePath = Storage::disk('local')->path($file->path);
+            if (file_exists($storagePath)) {
+                $zip->addFile($storagePath, $folderPath . '/' . $file->name);
+            }
+        }
+
+        foreach ($folder->children as $child) {
+            $this->addFolderToZip($child, $zip, $folderPath);
+        }
     }
 
     private function authorizeAccess(Folder $folder)

@@ -93,4 +93,22 @@ class FileController extends Controller
 
         return view('web.files.trash', compact('deletedFolders', 'deletedFiles'));
     }
+
+    public function preview(File $file)
+    {
+        if ($file->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $path = Storage::disk('local')->path($file->path);
+        
+        if (!file_exists($path)) {
+            abort(404);
+        }
+
+        return response()->file($path, [
+            'Content-Type' => $file->mime_type,
+            'Content-Disposition' => 'inline; filename="' . $file->name . '"'
+        ]);
+    }
 }

@@ -2,6 +2,19 @@
 @section('title', 'Mes Fichiers')
 
 @section('content')
+@if(session('share_success'))
+    <div class="bento-card" style="margin-bottom: 2rem; border-left: 6px solid var(--success); padding: 1.5rem;">
+        <h4 style="color: var(--success); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            {{ session('share_success') }}
+        </h4>
+        <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem;">
+            <input type="text" id="share-link-input" readonly value="{{ session('share_url') }}" class="form-input" style="flex: 1; font-family: monospace;">
+            <button onclick="navigator.clipboard.writeText(document.getElementById('share-link-input').value); alert('Lien copié !')" class="btn btn-primary">Copier le lien</button>
+        </div>
+    </div>
+@endif
+
 <div class="file-manager-header">
     <div>
         <h1 class="page-title">Explorateur de fichiers</h1>
@@ -60,7 +73,9 @@
     @foreach($folders as $folder)
     <div class="file-card" data-type="folder" onclick="window.location='{{ route('files.index', ['folder_id' => $folder->id]) }}'">
         <div class="file-actions" onclick="event.stopPropagation()">
-            <form action="{{ route('folders.destroy', $folder) }}" method="POST" onsubmit="return confirm('Déplacer ce dossier dans la corbeille ?')">
+            <a href="{{ route('folders.download.zip', $folder) }}" class="action-btn" title="Télécharger ZIP"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
+            <button type="button" class="action-btn" title="Partager" onclick="openShareModal(null, {{ $folder->id }}, '{{ addslashes($folder->name) }}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <form action="{{ route('folders.destroy', $folder) }}" method="POST" onsubmit="return confirm('Déplacer ce dossier dans la corbeille ?')" style="display:inline;">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="action-btn danger" title="Supprimer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
@@ -75,8 +90,10 @@
     <!-- Fichiers -->
     @foreach($files as $file)
     <div class="file-card" data-type="file">
-        <div class="file-actions">
+        <div class="file-actions" onclick="event.stopPropagation()">
+            <a href="{{ route('files.preview', $file) }}" target="_blank" class="action-btn" title="Aperçu"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></a>
             <a href="{{ route('files.download', $file) }}" class="action-btn" title="Télécharger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
+            <button type="button" class="action-btn" title="Partager" onclick="openShareModal({{ $file->id }}, null, '{{ addslashes($file->name) }}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
             <form action="{{ route('files.destroy', $file) }}" method="POST" onsubmit="return confirm('Déplacer ce fichier dans la corbeille ?')" style="display:inline;">
                 @csrf
                 @method('DELETE')
@@ -115,10 +132,48 @@
     </div>
 </div>
 
+<!-- Share Link Modal -->
+<div class="modal-overlay" id="share-modal" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 100;">
+    <div class="modal-card bento-card" style="width: 100%; max-width: 450px;">
+        <h3 style="margin-bottom:0.5rem;" id="share-modal-title">Partager un élément</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">Générez un lien public sécurisé pour partager cet élément.</p>
+        
+        <form action="{{ route('shares.store') }}" method="POST">
+            @csrf
+            <input type="hidden" name="file_id" id="share-file-id">
+            <input type="hidden" name="folder_id" id="share-folder-id">
+            
+            <div class="form-group">
+                <label class="form-label">Mot de passe d'accès (Optionnel)</label>
+                <input type="password" name="password" class="form-input" placeholder="Laisser vide pour un accès libre">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Date d'expiration (Optionnel)</label>
+                <input type="datetime-local" name="expires_at" class="form-input">
+            </div>
+
+            <div class="flex gap-4" style="justify-content:flex-end; margin-top: 1.5rem;">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('share-modal').style.display='none'">Annuler</button>
+                <button type="submit" class="btn btn-primary">Générer le lien</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Trash Banner -->
 <div class="trash-banner" style="margin-top: 2rem;">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-    <span>Gérez vos fichiers supprimés dans la corbeille</span>
+    <span>Gerez vos fichiers supprimés dans la corbeille</span>
     <a href="{{ route('files.trash') }}" class="btn btn-outline" style="padding:0.4rem 1rem; font-size:0.85rem; margin-left:auto;">Voir la corbeille</a>
 </div>
+
+<script>
+function openShareModal(fileId, folderId, itemName) {
+    document.getElementById('share-file-id').value = fileId || '';
+    document.getElementById('share-folder-id').value = folderId || '';
+    document.getElementById('share-modal-title').textContent = 'Partager "' + itemName + '"';
+    document.getElementById('share-modal').style.display = 'flex';
+}
+</script>
 @endsection
