@@ -15,9 +15,9 @@ Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.post');
     
-    // Stub OAuth routes
-    Route::get('/oauth/google', function() { return "Google OAuth"; })->name('oauth.google');
-    Route::get('/oauth/github', function() { return "GitHub OAuth"; })->name('oauth.github');
+    // OAuth routes
+    Route::get('/oauth/{provider}', [App\Http\Controllers\SocialAuthController::class, 'redirectToProvider'])->name('oauth.redirect');
+    Route::get('/oauth/{provider}/callback', [App\Http\Controllers\SocialAuthController::class, 'handleProviderCallback'])->name('oauth.callback');
 });
 
 Route::middleware('auth')->group(function () {
