@@ -39,11 +39,9 @@
             <div class="file-name">{{ $folder->name }}</div>
             <div class="file-meta">{{ $folder->updated_at->diffForHumans() }}</div>
         </div>
-        <form action="{{ route('folders.destroy', $folder) }}" method="POST" onsubmit="return confirm('Supprimer ce dossier ?')" onclick="event.stopPropagation()">
-            @csrf
-            @method('DELETE')
-            <button type="submit" class="action-btn" style="background: none; box-shadow: none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-danger"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg></button>
-        </form>
+        <div style="display: flex; gap: 0.5rem;" onclick="event.stopPropagation()">
+            <button type="button" class="action-btn" style="background: none; box-shadow: none; padding: 0;" title="Supprimer" data-url="{{ route('folders.destroy', $folder) }}" data-name="{{ $folder->name }}" data-folder="true" onclick="triggerDelete(this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-danger"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg></button>
+        </div>
     </div>
     @endforeach
 
@@ -60,13 +58,11 @@
             <div class="file-name">{{ $file->name }}</div>
             <div class="file-meta">{{ number_format($file->size / 1024, 1) }} Ko</div>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
-            <a href="{{ route('files.download', $file) }}" class="action-btn" style="background: none; box-shadow: none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
-            <form action="{{ route('files.destroy', $file) }}" method="POST" onsubmit="return confirm('Supprimer ce fichier ?')">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="action-btn" style="background: none; box-shadow: none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-danger"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg></button>
-            </form>
+        <div style="display: flex; gap: 0.5rem;" onclick="event.stopPropagation()">
+            <button type="button" class="action-btn" style="background: none; box-shadow: none; padding: 0;" title="Aperçu" data-url="{{ route('files.preview', $file) }}" data-mime="{{ $file->mime_type }}" data-name="{{ $file->name }}" onclick="triggerPreview(this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            <a href="{{ route('files.download', $file) }}" class="action-btn" style="background: none; box-shadow: none; padding: 0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
+            <button type="button" class="action-btn" style="background: none; box-shadow: none; padding: 0;" title="Partager" data-id="{{ $file->id }}" data-name="{{ $file->name }}" onclick="triggerShare(this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+            <button type="button" class="action-btn" style="background: none; box-shadow: none; padding: 0;" title="Supprimer" data-url="{{ route('files.destroy', $file) }}" data-name="{{ $file->name }}" data-folder="false" onclick="triggerDelete(this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-danger"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg></button>
         </div>
     </div>
     @endforeach
@@ -109,4 +105,158 @@
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
 </div>
 
+<!-- Share Link Modal -->
+<div class="modal-overlay" id="share-modal" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 9999; padding: 1rem;">
+    <div class="modal-card bento-card" style="width: 100%; max-width: 450px; background: var(--bg-card); padding: 1.5rem; border-radius: 1rem;">
+        <h3 style="margin-bottom:0.5rem;" id="share-modal-title">Partager un fichier</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">Générez un lien public sécurisé pour partager ce fichier.</p>
+        
+        <form action="{{ route('shares.store') }}" method="POST">
+            @csrf
+            <input type="hidden" name="file_id" id="share-file-id">
+            
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label class="form-label">Type de protection</label>
+                <select id="password-requirement" class="form-input" onchange="togglePasswordRequirement(this)" style="width: 100%;">
+                    <option value="optional">Mot de passe optionnel</option>
+                    <option value="required">Mot de passe obligatoire</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label class="form-label" id="password-label">Mot de passe d'accès</label>
+                <input type="password" name="password" id="share-password-input" class="form-input" placeholder="Laisser vide pour un accès libre" style="width: 100%;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="form-label">Date d'expiration (Optionnel)</label>
+                <input type="datetime-local" name="expires_at" class="form-input" style="width: 100%;">
+            </div>
+
+            <div class="flex gap-4" style="justify-content:flex-end; display: flex; gap: 1rem;">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('share-modal').style.display='none'">Annuler</button>
+                <button type="submit" class="btn btn-primary">Générer le lien</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal-overlay" id="preview-modal" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 9999; padding: 1rem;">
+    <div class="modal-card bento-card" style="width: 100%; height: 80%; display: flex; flex-direction: column; background: var(--bg-card); padding: 1.5rem; border-radius: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 id="preview-modal-title" style="margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;">Aperçu du fichier</h3>
+            <button onclick="closePreviewModal()" class="btn btn-outline" style="padding: 0.25rem 0.5rem; min-width: auto; height: auto;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div id="preview-modal-body" style="flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 0.5rem;">
+            <!-- Content injected dynamically -->
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="delete-modal" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 9999; padding: 1rem;">
+    <div class="modal-card bento-card" style="width: 100%; max-width: 400px; background: var(--bg-card); padding: 1.5rem; border-radius: 1rem;">
+        <h3 style="margin-bottom:0.5rem; color: var(--danger);">Confirmer la suppression</h3>
+        <p id="delete-modal-message" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Voulez-vous vraiment déplacer cet élément dans la corbeille ?</p>
+        <form id="delete-modal-form" action="" method="POST">
+            @csrf
+            @method('DELETE')
+            <div class="flex gap-4" style="justify-content:flex-end; display: flex; gap: 1rem;">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('delete-modal').style.display='none'">Annuler</button>
+                <button type="submit" class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);">Supprimer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function triggerPreview(btn) {
+    openPreviewModal(btn.getAttribute('data-url'), btn.getAttribute('data-mime'), btn.getAttribute('data-name'));
+}
+
+function triggerShare(btn) {
+    openShareModal(btn.getAttribute('data-id'), btn.getAttribute('data-name'));
+}
+
+function triggerDelete(btn) {
+    const isFolder = btn.getAttribute('data-folder') === 'true';
+    openDeleteModal(btn.getAttribute('data-url'), btn.getAttribute('data-name'), isFolder);
+}
+
+function togglePasswordRequirement(select) {
+    const pwdInput = document.getElementById('share-password-input');
+    const pwdLabel = document.getElementById('password-label');
+    if (select.value === 'required') {
+        pwdInput.required = true;
+        pwdInput.placeholder = "Saisissez le mot de passe requis";
+        pwdLabel.textContent = "Mot de passe d'accès (Obligatoire)";
+    } else {
+        pwdInput.required = false;
+        pwdInput.placeholder = "Laisser vide pour un accès libre";
+        pwdLabel.textContent = "Mot de passe d'accès (Optionnel)";
+    }
+}
+
+function openShareModal(fileId, itemName) {
+    document.getElementById('share-file-id').value = fileId || '';
+    document.getElementById('share-modal-title').textContent = 'Partager "' + itemName + '"';
+    
+    // Reset selection state
+    const select = document.getElementById('password-requirement');
+    select.value = 'optional';
+    togglePasswordRequirement(select);
+    document.getElementById('share-password-input').value = '';
+    
+    document.getElementById('share-modal').style.display = 'flex';
+}
+
+function openPreviewModal(url, mimeType, name) {
+    const title = document.getElementById('preview-modal-title');
+    const body = document.getElementById('preview-modal-body');
+    title.textContent = name;
+    body.innerHTML = '';
+
+    if (mimeType.includes('image')) {
+        const img = document.createElement('img');
+        img.src = url;
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '100%';
+        img.style.objectFit = 'contain';
+        body.appendChild(img);
+    } else if (mimeType.includes('pdf')) {
+        const iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = 'none';
+        body.appendChild(iframe);
+    } else {
+        const iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = 'none';
+        iframe.style.background = '#fff';
+        body.appendChild(iframe);
+    }
+    
+    document.getElementById('preview-modal').style.display = 'flex';
+}
+
+function closePreviewModal() {
+    document.getElementById('preview-modal').style.display = 'none';
+    document.getElementById('preview-modal-body').innerHTML = '';
+}
+
+function openDeleteModal(actionUrl, itemName, isFolder) {
+    const form = document.getElementById('delete-modal-form');
+    const msg = document.getElementById('delete-modal-message');
+    form.action = actionUrl;
+    msg.textContent = `Voulez-vous vraiment déplacer le ${isFolder ? 'dossier' : 'fichier'} "${itemName}" dans la corbeille ?`;
+    document.getElementById('delete-modal').style.display = 'flex';
+}
+</script>
 @endsection
