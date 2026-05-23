@@ -43,10 +43,10 @@ class ForgotPasswordController extends Controller
         $success = $this->firebaseService->sendPasswordResetEmail($request->email);
 
         if ($success) {
-            return back()->with('status', 'Un e-mail de réinitialisation de mot de passe a été envoyé via Firebase.');
+            return back()->with('status', 'Un e-mail de réinitialisation de mot de passe a été envoyé.');
         }
 
-        return back()->withErrors(['email' => 'Une erreur est survenue lors de la communication avec Firebase. Veuillez réessayer.']);
+        return back()->withErrors(['email' => 'Une erreur est survenue lors de la communication. Veuillez réessayer.']);
     }
 
     /**

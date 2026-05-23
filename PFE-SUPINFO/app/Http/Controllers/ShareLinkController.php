@@ -21,30 +21,18 @@ class ShareLinkController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'file_id' => 'nullable|exists:files,id',
-            'folder_id' => 'nullable|exists:folders,id',
+            'file_id' => 'required|exists:files,id',
             'expires_at' => 'nullable|date|after:now',
             'password' => 'nullable|string|min:4',
         ]);
 
-        if (!$request->file_id && !$request->folder_id) {
-            return back()->withErrors(['error' => 'Sélectionnez un fichier ou un dossier à partager.']);
-        }
-
-        // Validate ownership
-        if ($request->file_id) {
-            $file = File::findOrFail($request->file_id);
-            if ($file->user_id !== Auth::id()) abort(403);
-        }
-        if ($request->folder_id) {
-            $folder = Folder::findOrFail($request->folder_id);
-            if ($folder->user_id !== Auth::id()) abort(403);
-        }
+        $file = File::findOrFail($request->file_id);
+        if ($file->user_id !== Auth::id()) abort(403);
 
         $shareLink = ShareLink::create([
             'user_id' => Auth::id(),
             'file_id' => $request->file_id,
-            'folder_id' => $request->folder_id,
+            'folder_id' => null,
             'token' => Str::random(32),
             'expires_at' => $request->expires_at,
             'password' => $request->password ? Hash::make($request->password) : null,
