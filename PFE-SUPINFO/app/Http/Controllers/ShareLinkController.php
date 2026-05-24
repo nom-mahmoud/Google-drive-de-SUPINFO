@@ -21,24 +21,46 @@ class ShareLinkController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'file_id' => 'required|exists:files,id',
-            'expires_at' => 'nullable|date|after:now',
+            'file_id' => 'nullable|required_without:folder_id|exists:files,id',
+            'folder_id' => 'nullable|required_without:file_id|exists:folders,id',
+            'expires_in_minutes' => 'nullable|integer|min:1',
             'password' => 'nullable|string|min:4',
         ]);
 
-        $file = File::findOrFail($request->file_id);
-        if ($file->user_id !== Auth::id()) abort(403);
+        $fileId = $request->file_id;
+        $folderId = $request->folder_id;
+
+        if ($fileId) {
+            $file = File::findOrFail($fileId);
+            if ($file->user_id !== Auth::id()) abort(403);
+        } elseif ($folderId) {
+            $folder = Folder::findOrFail($folderId);
+            if ($folder->user_id !== Auth::id()) abort(403);
+        }
+
+        $expiresAt = null;
+        if ($request->filled('expires_in_minutes')) {
+            $expiresAt = now()->addMinutes((int)$request->expires_in_minutes);
+        }
 
         $shareLink = ShareLink::create([
             'user_id' => Auth::id(),
-            'file_id' => $request->file_id,
-            'folder_id' => null,
+            'file_id' => $fileId,
+            'folder_id' => $folderId,
             'token' => Str::random(32),
-            'expires_at' => $request->expires_at,
+            'expires_at' => $expiresAt,
             'password' => $request->password ? Hash::make($request->password) : null,
         ]);
 
         $url = route('shares.public', $shareLink->token);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'share_url' => $url,
+                'token' => $shareLink->token
+            ]);
+        }
 
         return back()->with('share_success', 'Lien de partage créé avec succès !')
                      ->with('share_url', $url);
@@ -61,8 +83,12 @@ class ShareLinkController extends Controller
 
         // Check expiry
         if ($shareLink->expires_at && $shareLink->expires_at->isPast()) {
-            abort(404, 'Ce lien de partage a expiré.');
+            $viewPath = $this->isMobile($request) ? 'mobile.shares.expired' : 'web.shares.expired';
+            return view($viewPath);
         }
+
+        // Increment views count
+        $shareLink->increment('views_count');
 
         // Check password protection
         if ($shareLink->password) {
@@ -166,5 +192,46 @@ class ShareLinkController extends Controller
         }
 
         return Storage::disk('local')->download($file->path, $file->name);
+    }
+
+    public function preview(Request $request, $token, File $file)
+    {
+        $shareLink = ShareLink::where('token', $token)->firstOrFail();
+
+        // Security check expiration & password
+        if ($shareLink->expires_at && $shareLink->expires_at->isPast()) {
+            abort(403, 'Lien expiré.');
+        }
+        if ($shareLink->password && !session("verified_share_$token")) {
+            abort(403, 'Mot de passe requis.');
+        }
+
+        // Verify the file belongs to the shared folder or is the shared file itself
+        if ($shareLink->file_id) {
+            if ($shareLink->file_id !== $file->id) abort(403);
+        } else {
+            // It must be inside the shared folder tree
+            $tempFolder = $file->folder;
+            $isDescendant = false;
+            while ($tempFolder) {
+                if ($tempFolder->id == $shareLink->folder_id) {
+                    $isDescendant = true;
+                    break;
+                }
+                $tempFolder = $tempFolder->parent;
+            }
+            if (!$isDescendant) abort(403);
+        }
+
+        $path = Storage::disk('local')->path($file->path);
+        
+        if (!file_exists($path)) {
+            abort(404);
+        }
+
+        return response()->file($path, [
+            'Content-Type' => $file->mime_type,
+            'Content-Disposition' => 'inline; filename="' . $file->name . '"'
+        ]);
     }
 }

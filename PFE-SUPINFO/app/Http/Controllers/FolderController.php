@@ -83,4 +83,77 @@ class FolderController extends Controller
             abort(403);
         }
     }
+
+    public function forceDelete($id)
+    {
+        $folder = Folder::onlyTrashed()->where('user_id', Auth::id())->findOrFail($id);
+        
+        $this->deleteFolderPermanently($folder);
+
+        return back()->with('success', 'Dossier et son contenu supprimés définitivement.');
+    }
+
+    private function deleteFolderPermanently(Folder $folder)
+    {
+        // Deleting files
+        foreach ($folder->files()->withTrashed()->get() as $file) {
+            if (Storage::disk('local')->exists($file->path)) {
+                Storage::disk('local')->delete($file->path);
+            }
+            $file->forceDelete();
+        }
+
+        // Deleting children recursively
+        foreach ($folder->children()->withTrashed()->get() as $child) {
+            $this->deleteFolderPermanently($child);
+        }
+
+        $folder->forceDelete();
+    }
+
+    public function rename(Request $request, Folder $folder)
+    {
+        $this->authorizeAccess($folder);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $folder->update([
+            'name' => $request->name,
+        ]);
+
+        return back()->with('success', 'Dossier renommé avec succès.');
+    }
+
+    public function move(Request $request, Folder $folder)
+    {
+        $this->authorizeAccess($folder);
+
+        $request->validate([
+            'parent_id' => 'nullable|exists:folders,id',
+        ]);
+
+        // Security check: cannot move a folder into itself or into its own descendants
+        if ($request->parent_id) {
+            $targetFolder = Folder::findOrFail($request->parent_id);
+            if ($targetFolder->user_id !== Auth::id()) {
+                abort(403);
+            }
+
+            $temp = $targetFolder;
+            while ($temp) {
+                if ($temp->id == $folder->id) {
+                    return back()->withErrors(['error' => 'Impossible de déplacer un dossier à l\'intérieur de lui-même ou de ses sous-dossiers.']);
+                }
+                $temp = $temp->parent;
+            }
+        }
+
+        $folder->update([
+            'parent_id' => $request->parent_id,
+        ]);
+
+        return back()->with('success', 'Dossier déplacé avec succès.');
+    }
 }

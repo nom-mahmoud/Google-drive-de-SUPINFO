@@ -35,6 +35,7 @@ Route::middleware('guest')->group(function () {
 Route::get('/s/{token}', [ShareLinkController::class, 'show'])->name('shares.public');
 Route::post('/s/{token}/verify', [ShareLinkController::class, 'verify'])->name('shares.verify');
 Route::get('/s/{token}/download/{file}', [ShareLinkController::class, 'download'])->name('shares.download');
+Route::get('/s/{token}/preview/{file}', [ShareLinkController::class, 'preview'])->name('shares.preview');
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -52,15 +53,26 @@ Route::middleware('auth')->group(function () {
     Route::get('/files/download/{file}', [FileController::class, 'download'])->name('files.download');
     Route::get('/files/preview/{file}', [FileController::class, 'preview'])->name('files.preview');
     Route::delete('/files/{file}', [FileController::class, 'destroy'])->name('files.destroy');
+    Route::post('/files/{id}/restore', [FileController::class, 'restore'])->name('files.restore');
+    Route::delete('/files/{id}/force-delete', [FileController::class, 'forceDelete'])->name('files.force-delete');
+    Route::patch('/files/{file}/rename', [FileController::class, 'rename'])->name('files.rename');
+    Route::patch('/files/{file}/move', [FileController::class, 'move'])->name('files.move');
     Route::get('/trash', [FileController::class, 'trash'])->name('files.trash');
 
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.store');
     Route::delete('/folders/{folder}', [FolderController::class, 'destroy'])->name('folders.destroy');
     Route::post('/folders/{id}/restore', [FolderController::class, 'restore'])->name('folders.restore');
+    Route::delete('/folders/{id}/force-delete', [FolderController::class, 'forceDelete'])->name('folders.force-delete');
+    Route::patch('/folders/{folder}/rename', [FolderController::class, 'rename'])->name('folders.rename');
+    Route::patch('/folders/{folder}/move', [FolderController::class, 'move'])->name('folders.move');
     Route::get('/folders/download-zip/{folder}', [FolderController::class, 'downloadZip'])->name('folders.download.zip');
 
     // Sharing Links Management
     Route::post('/shares', [ShareLinkController::class, 'store'])->name('shares.store');
     Route::delete('/shares/{shareLink}', [ShareLinkController::class, 'destroy'])->name('shares.revoke');
+
+    // Stripe Payments
+    Route::post('/payment/checkout', [\App\Http\Controllers\PaymentController::class, 'checkout'])->name('payment.checkout');
+    Route::get('/payment/success', [\App\Http\Controllers\PaymentController::class, 'success'])->name('payment.success');
 });
 

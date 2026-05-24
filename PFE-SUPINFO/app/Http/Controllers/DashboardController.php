@@ -27,7 +27,7 @@ class DashboardController extends Controller
 
         // Calculate storage
         $totalBytesUsed = File::where('user_id', $userId)->sum('size');
-        $quotaMaxBytes = 30 * 1024 * 1024 * 1024; // 30 GB
+        $quotaMaxBytes = Auth::user()->storage_limit ?? (30 * 1024 * 1024 * 1024); // fallback 30 GB
         $quotaPercentage = min(100, round(($totalBytesUsed / $quotaMaxBytes) * 100, 2));
 
         // Format space used

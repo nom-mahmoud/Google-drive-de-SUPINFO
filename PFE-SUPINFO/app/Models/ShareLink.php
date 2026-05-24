@@ -16,6 +16,7 @@ class ShareLink extends Model
         'token',
         'expires_at',
         'password',
+        'views_count',
     ];
 
     protected $casts = [
