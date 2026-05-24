@@ -10,8 +10,25 @@
         </h4>
         <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem;">
             <input type="text" id="share-link-input" readonly value="{{ session('share_url') }}" class="form-input" style="flex: 1; font-family: monospace;">
-            <button onclick="navigator.clipboard.writeText(document.getElementById('share-link-input').value); alert('Lien copié !')" class="btn btn-primary">Copier le lien</button>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('share-link-input').value); showToast('Lien copié ! 📋')" class="btn btn-primary">Copier le lien</button>
         </div>
+    </div>
+@endif
+
+@if(session('success'))
+    <div class="bento-card" style="margin-bottom: 2rem; border-left: 6px solid var(--success); padding: 1rem 1.5rem; font-weight: 500; color: var(--success);">
+        ✓ {{ session('success') }}
+    </div>
+@endif
+
+@if($errors->any())
+    <div class="bento-card error-alert-container" style="margin-bottom: 2rem; border-left: 6px solid var(--danger); padding: 1.25rem 1.5rem;">
+        <h4 style="color: var(--danger); margin-bottom: 0.5rem; font-weight: 600;">⚠️ Une erreur est survenue</h4>
+        <ul style="margin: 0; padding-left: 1.25rem; color: var(--text-muted); font-size: 0.9rem;">
+            @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
     </div>
 @endif
 
@@ -51,12 +68,29 @@
         <form id="upload-form" action="{{ route('files.upload') }}" method="POST" enctype="multipart/form-data" style="display:inline;">
             @csrf
             <input type="hidden" name="folder_id" value="{{ $currentFolder ? $currentFolder->id : '' }}">
-            <input type="file" id="file-input" name="files[]" style="display:none;" multiple onchange="document.getElementById('upload-form').submit()">
+            <input type="file" id="file-input" name="files[]" style="display:none;" multiple>
             <button type="button" class="btn btn-primary" onclick="document.getElementById('file-input').click()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 Envoyer un fichier
             </button>
         </form>
+    </div>
+</div>
+
+<!-- Upload Zone -->
+<div class="upload-zone bento-card" id="upload-zone" style="margin-bottom: 2rem;">
+    <svg class="upload-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem;" id="upload-text">Glissez-déposez vos fichiers ici, ou cliquez pour parcourir</h3>
+    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">Prend en charge les fichiers multiples jusqu'à 50 Mo</p>
+    
+    <div class="upload-progress-container" id="upload-progress-container" style="display: none; margin-top: 1.5rem;">
+        <div class="upload-progress-bar">
+            <div class="upload-progress-fill" id="upload-progress-fill"></div>
+        </div>
     </div>
 </div>
 
@@ -73,6 +107,8 @@
     @foreach($folders as $folder)
     <div class="file-card" data-type="folder" onclick="window.location='{{ route('files.index', ['folder_id' => $folder->id]) }}'">
         <div class="file-actions" onclick="event.stopPropagation()">
+            <button type="button" class="action-btn" title="Renommer" data-url="{{ route('folders.rename', $folder) }}" data-name="{{ $folder->name }}" onclick="triggerRename(this, true)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button type="button" class="action-btn" title="Déplacer" data-url="{{ route('folders.move', $folder) }}" data-name="{{ $folder->name }}" data-current-parent="{{ $folder->parent_id }}" onclick="triggerMove(this, true)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>
             <a href="{{ route('folders.download.zip', $folder) }}" class="action-btn" title="Télécharger ZIP"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
             <button type="button" class="action-btn danger" title="Supprimer" data-url="{{ route('folders.destroy', $folder) }}" data-name="{{ $folder->name }}" data-folder="true" onclick="triggerDelete(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
         </div>
@@ -87,6 +123,8 @@
     <div class="file-card" data-type="file">
         <div class="file-actions" onclick="event.stopPropagation()">
             <button type="button" class="action-btn" title="Aperçu" data-url="{{ route('files.preview', $file) }}" data-mime="{{ $file->mime_type }}" data-name="{{ $file->name }}" onclick="triggerPreview(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            <button type="button" class="action-btn" title="Renommer" data-url="{{ route('files.rename', $file) }}" data-name="{{ $file->name }}" onclick="triggerRename(this, false)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button type="button" class="action-btn" title="Déplacer" data-url="{{ route('files.move', $file) }}" data-name="{{ $file->name }}" data-current-parent="{{ $file->folder_id }}" onclick="triggerMove(this, false)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>
             <a href="{{ route('files.download', $file) }}" class="action-btn" title="Télécharger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
             <button type="button" class="action-btn" title="Partager" data-id="{{ $file->id }}" data-name="{{ $file->name }}" onclick="triggerShare(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
             <button type="button" class="action-btn danger" title="Supprimer" data-url="{{ route('files.destroy', $file) }}" data-name="{{ $file->name }}" data-folder="false" onclick="triggerDelete(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
@@ -116,7 +154,7 @@
                 <input type="text" name="name" class="form-input" placeholder="Mon nouveau dossier" required autofocus>
             </div>
             <div class="flex gap-4" style="justify-content:flex-end; margin-top: 1rem;">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('folder-modal').style.display='none'">Annuler</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('folder-modal')">Annuler</button>
                 <button type="submit" class="btn btn-primary">Créer</button>
             </div>
         </form>
@@ -152,7 +190,7 @@
             </div>
 
             <div class="flex gap-4" style="justify-content:flex-end; display: flex; gap: 1rem;">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('share-modal').style.display='none'">Annuler</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('share-modal')">Annuler</button>
                 <button type="submit" class="btn btn-primary">Générer le lien</button>
             </div>
         </form>
@@ -183,8 +221,53 @@
             @csrf
             @method('DELETE')
             <div class="flex gap-4" style="justify-content:flex-end; display: flex; gap: 1rem; margin-top: 1.5rem;">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('delete-modal').style.display='none'">Annuler</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('delete-modal')">Annuler</button>
                 <button type="submit" class="btn btn-primary" style="background: var(--danger); border-color: var(--danger);">Déplacer à la corbeille</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Rename Modal -->
+<div class="modal-overlay" id="rename-modal" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 9999;">
+    <div class="modal-card bento-card" style="width: 100%; max-width: 400px; padding: 1.5rem;">
+        <h3 style="margin-bottom:0.5rem;" id="rename-modal-title">Renommer l'élément</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Saisissez le nouveau nom ci-dessous.</p>
+        <form id="rename-modal-form" action="" method="POST">
+            @csrf
+            @method('PATCH')
+            <div class="form-group">
+                <label class="form-label">Nom</label>
+                <input type="text" name="name" id="rename-name-input" class="form-input" placeholder="Nouveau nom" required autofocus>
+            </div>
+            <div class="flex gap-4" style="justify-content:flex-end; display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('rename-modal')">Annuler</button>
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Move Modal -->
+<div class="modal-overlay" id="move-modal" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 9999;">
+    <div class="modal-card bento-card" style="width: 100%; max-width: 400px; padding: 1.5rem;">
+        <h3 style="margin-bottom:0.5rem;" id="move-modal-title">Déplacer l'élément</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Sélectionnez le dossier de destination.</p>
+        <form id="move-modal-form" action="" method="POST">
+            @csrf
+            @method('PATCH')
+            <div class="form-group">
+                <label class="form-label">Dossier cible</label>
+                <select name="folder_id" id="move-folder-select" class="form-input" style="width: 100%;">
+                    <option value="">Accueil (Racine)</option>
+                    @foreach($allFolders as $f)
+                        <option value="{{ $f->id }}">{{ $f->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="flex gap-4" style="justify-content:flex-end; display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('move-modal')">Annuler</button>
+                <button type="submit" class="btn btn-primary">Déplacer</button>
             </div>
         </form>
     </div>
@@ -198,6 +281,24 @@
 </div>
 
 <script>
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+    }
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+}
+
 function triggerPreview(btn) {
     openPreviewModal(btn.getAttribute('data-url'), btn.getAttribute('data-mime'), btn.getAttribute('data-name'));
 }
@@ -209,6 +310,43 @@ function triggerShare(btn) {
 function triggerDelete(btn) {
     const isFolder = btn.getAttribute('data-folder') === 'true';
     openDeleteModal(btn.getAttribute('data-url'), btn.getAttribute('data-name'), isFolder);
+}
+
+function triggerRename(btn, isFolder) {
+    const form = document.getElementById('rename-modal-form');
+    const input = document.getElementById('rename-name-input');
+    const title = document.getElementById('rename-modal-title');
+    
+    form.action = btn.getAttribute('data-url');
+    input.value = btn.getAttribute('data-name');
+    title.textContent = `Renommer le ${isFolder ? 'dossier' : 'fichier'}`;
+    
+    openModal('rename-modal');
+}
+
+function triggerMove(btn, isFolder) {
+    const form = document.getElementById('move-modal-form');
+    const select = document.getElementById('move-folder-select');
+    const title = document.getElementById('move-modal-title');
+    
+    form.action = btn.getAttribute('data-url');
+    select.name = isFolder ? 'parent_id' : 'folder_id';
+    
+    const currentParent = btn.getAttribute('data-current-parent') || '';
+    select.value = currentParent;
+    
+    // Disable current folder as target to avoid circular ref
+    for (let option of select.options) {
+        if (isFolder && (option.value === btn.getAttribute('data-name') || option.value === btn.getAttribute('data-url').split('/').slice(-2)[0])) {
+            option.disabled = true;
+        } else {
+            option.disabled = false;
+        }
+    }
+    
+    title.textContent = `Déplacer le ${isFolder ? 'dossier' : 'fichier'}`;
+    
+    openModal('move-modal');
 }
 
 function togglePasswordRequirement(select) {
@@ -235,7 +373,7 @@ function openShareModal(fileId, itemName) {
     togglePasswordRequirement(select);
     document.getElementById('share-password-input').value = '';
     
-    document.getElementById('share-modal').style.display = 'flex';
+    openModal('share-modal');
 }
 
 function openPreviewModal(url, mimeType, name) {
@@ -268,12 +406,14 @@ function openPreviewModal(url, mimeType, name) {
         body.appendChild(iframe);
     }
     
-    document.getElementById('preview-modal').style.display = 'flex';
+    openModal('preview-modal');
 }
 
 function closePreviewModal() {
-    document.getElementById('preview-modal').style.display = 'none';
-    document.getElementById('preview-modal-body').innerHTML = '';
+    closeModal('preview-modal');
+    setTimeout(() => {
+        document.getElementById('preview-modal-body').innerHTML = '';
+    }, 300);
 }
 
 function openDeleteModal(actionUrl, itemName, isFolder) {
@@ -281,7 +421,7 @@ function openDeleteModal(actionUrl, itemName, isFolder) {
     const msg = document.getElementById('delete-modal-message');
     form.action = actionUrl;
     msg.textContent = `Voulez-vous vraiment déplacer le ${isFolder ? 'dossier' : 'fichier'} "${itemName}" dans la corbeille ?`;
-    document.getElementById('delete-modal').style.display = 'flex';
+    openModal('delete-modal');
 }
 </script>
 @endsection

@@ -24,6 +24,7 @@ class ShareLinkController extends Controller
             'file_id' => 'nullable|required_without:folder_id|exists:files,id',
             'folder_id' => 'nullable|required_without:file_id|exists:folders,id',
             'expires_in_minutes' => 'nullable|integer|min:1',
+            'expires_at' => 'nullable|date|after:now',
             'password' => 'nullable|string|min:4',
         ]);
 
@@ -32,15 +33,17 @@ class ShareLinkController extends Controller
 
         if ($fileId) {
             $file = File::findOrFail($fileId);
-            if ($file->user_id !== Auth::id()) abort(403);
+            if ($file->user_id != Auth::id()) abort(403);
         } elseif ($folderId) {
             $folder = Folder::findOrFail($folderId);
-            if ($folder->user_id !== Auth::id()) abort(403);
+            if ($folder->user_id != Auth::id()) abort(403);
         }
 
         $expiresAt = null;
         if ($request->filled('expires_in_minutes')) {
             $expiresAt = now()->addMinutes((int)$request->expires_in_minutes);
+        } elseif ($request->filled('expires_at')) {
+            $expiresAt = \Illuminate\Support\Carbon::parse($request->expires_at);
         }
 
         $shareLink = ShareLink::create([
@@ -68,7 +71,7 @@ class ShareLinkController extends Controller
 
     public function destroy(ShareLink $shareLink)
     {
-        if ($shareLink->user_id !== Auth::id()) {
+        if ($shareLink->user_id != Auth::id()) {
             abort(403);
         }
 
@@ -79,12 +82,12 @@ class ShareLinkController extends Controller
 
     public function show(Request $request, $token)
     {
-        $shareLink = ShareLink::where('token', $token)->firstOrFail();
+        $shareLink = ShareLink::where('token', $token)->first();
 
-        // Check expiry
-        if ($shareLink->expires_at && $shareLink->expires_at->isPast()) {
+        // Check if not found or expired
+        if (!$shareLink || ($shareLink->expires_at && $shareLink->expires_at->isPast())) {
             $viewPath = $this->isMobile($request) ? 'mobile.shares.expired' : 'web.shares.expired';
-            return view($viewPath);
+            return view($viewPath, compact('shareLink'));
         }
 
         // Increment views count
@@ -164,19 +167,19 @@ class ShareLinkController extends Controller
 
     public function download(Request $request, $token, File $file)
     {
-        $shareLink = ShareLink::where('token', $token)->firstOrFail();
+        $shareLink = ShareLink::where('token', $token)->first();
 
         // Security check expiration & password
-        if ($shareLink->expires_at && $shareLink->expires_at->isPast()) {
-            abort(403, 'Lien expiré.');
+        if (!$shareLink || ($shareLink->expires_at && $shareLink->expires_at->isPast())) {
+            return redirect()->route('shares.public', $token);
         }
         if ($shareLink->password && !session("verified_share_$token")) {
-            abort(403, 'Mot de passe requis.');
+            return redirect()->route('shares.public', $token);
         }
 
         // Verify the file belongs to the shared folder or is the shared file itself
         if ($shareLink->file_id) {
-            if ($shareLink->file_id !== $file->id) abort(403);
+            if ($shareLink->file_id != $file->id) abort(403);
         } else {
             // It must be inside the shared folder tree
             $tempFolder = $file->folder;
@@ -196,19 +199,19 @@ class ShareLinkController extends Controller
 
     public function preview(Request $request, $token, File $file)
     {
-        $shareLink = ShareLink::where('token', $token)->firstOrFail();
+        $shareLink = ShareLink::where('token', $token)->first();
 
         // Security check expiration & password
-        if ($shareLink->expires_at && $shareLink->expires_at->isPast()) {
-            abort(403, 'Lien expiré.');
+        if (!$shareLink || ($shareLink->expires_at && $shareLink->expires_at->isPast())) {
+            return redirect()->route('shares.public', $token);
         }
         if ($shareLink->password && !session("verified_share_$token")) {
-            abort(403, 'Mot de passe requis.');
+            return redirect()->route('shares.public', $token);
         }
 
         // Verify the file belongs to the shared folder or is the shared file itself
         if ($shareLink->file_id) {
-            if ($shareLink->file_id !== $file->id) abort(403);
+            if ($shareLink->file_id != $file->id) abort(403);
         } else {
             // It must be inside the shared folder tree
             $tempFolder = $file->folder;

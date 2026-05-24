@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SUPFile - @yield('title', 'Le Cloud Premium')</title>
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ time() }}">
     <script>
         // Apply theme immediately to avoid flash
         if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -28,6 +28,7 @@
                 </button>
                 @auth
                     <a href="{{ route('dashboard') }}" class="btn btn-outline" style="padding: 0.5rem 1rem;">Tableau de bord</a>
+                    <a href="{{ route('settings') }}" class="btn btn-outline" style="padding: 0.5rem 1rem;">Profil</a>
                     <form action="{{ route('logout') }}" method="POST" style="display:inline;">
                         @csrf
                         <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem;">Déconnexion</button>
@@ -44,7 +45,38 @@
         @yield('content')
     </main>
 
+    <!-- Global Custom Toast -->
+    <div id="custom-toast" style="display: none; position: fixed; bottom: 2rem; right: 2rem; background: var(--surface-color); color: var(--text-main); border: 1px solid var(--border-color); padding: 1rem 1.5rem; border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 10000; align-items: center; gap: 0.75rem; transition: opacity 0.3s ease, transform 0.3s ease; opacity: 0; transform: translateY(10px);">
+        <div style="background: rgba(37, 99, 235, 0.1); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <span id="custom-toast-message" style="font-size: 0.9rem; font-weight: 500;">Lien copié !</span>
+    </div>
+
+    <script>
+    function showToast(message) {
+        const toast = document.getElementById('custom-toast');
+        const msgSpan = document.getElementById('custom-toast-message');
+        if (toast && msgSpan) {
+            msgSpan.textContent = message;
+            toast.style.display = 'flex';
+            setTimeout(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+            }, 10);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+    }
+    </script>
+
     <!-- JS -->
-    <script src="{{ asset('js/app.js') }}"></script>
+    <script src="{{ asset('js/app.js') }}?v={{ time() }}"></script>
 </body>
 </html>

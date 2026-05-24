@@ -1,6 +1,6 @@
 @extends('layouts.mobile')
-@section('title', 'Paramètres')
-@section('header_title', 'Réglages')
+@section('title', 'Mon Profil')
+@section('header_title', 'Mon Profil')
 
 @section('content')
 @if(session('success'))
@@ -46,11 +46,26 @@
         Plans & Stockage
     </h3>
     
+    @php
+        $planName = $user->plan ?? 'Standard';
+        $storageFormatted = '30 Go';
+        $planDesc = 'Gratuit et à vie';
+        if ($planName === 'Pro') {
+            $storageFormatted = '100 Go';
+            $planDesc = 'Espace Pro actif';
+        } elseif ($planName === 'Premium') {
+            $storageFormatted = '500 Go';
+            $planDesc = 'Espace Premium actif';
+        } elseif ($planName === 'Business') {
+            $storageFormatted = '2 To';
+            $planDesc = 'Espace Business actif';
+        }
+    @endphp
     <!-- Plan Actuel -->
     <div style="background: var(--primary-light); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
         <div>
-            <div style="font-weight: 700; color: var(--primary); font-size: 0.85rem;">Standard (30 Go)</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">Gratuit et à vie</div>
+            <div style="font-weight: 700; color: var(--primary); font-size: 0.85rem;">{{ $planName }} ({{ $storageFormatted }})</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">{{ $planDesc }}</div>
         </div>
         <span style="background: var(--primary); color: #fff; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.65rem; font-weight: 600;">ACTIF</span>
     </div>
@@ -63,7 +78,15 @@
                 <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-main);">Pro (100 Go)</div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">4.99 € / mois</div>
             </div>
-            <button type="button" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: auto; height: auto;" onclick="openPaymentModal('Plan Pro (100 Go)', '4.99')">Prendre</button>
+            @if($planName === 'Pro')
+                <span style="background: var(--border-color); color: var(--text-muted); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600;">Actif</span>
+            @else
+                <form action="{{ route('payment.checkout') }}" method="POST" style="display:inline;">
+                    @csrf
+                    <input type="hidden" name="plan" value="Pro">
+                    <button type="submit" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: auto; height: auto;">Prendre</button>
+                </form>
+            @endif
         </div>
         
         <!-- Premium -->
@@ -72,7 +95,15 @@
                 <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-main);">Premium (500 Go)</div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">9.99 € / mois</div>
             </div>
-            <button type="button" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: auto; height: auto;" onclick="openPaymentModal('Plan Premium (500 Go)', '9.99')">Prendre</button>
+            @if($planName === 'Premium')
+                <span style="background: var(--border-color); color: var(--text-muted); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600;">Actif</span>
+            @else
+                <form action="{{ route('payment.checkout') }}" method="POST" style="display:inline;">
+                    @csrf
+                    <input type="hidden" name="plan" value="Premium">
+                    <button type="submit" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: auto; height: auto;">Prendre</button>
+                </form>
+            @endif
         </div>
 
         <!-- Business -->
@@ -81,7 +112,15 @@
                 <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-main);">Business (2 To)</div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">19.99 € / mois</div>
             </div>
-            <button type="button" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: auto; height: auto;" onclick="openPaymentModal('Plan Business (2 To)', '19.99')">Prendre</button>
+            @if($planName === 'Business')
+                <span style="background: var(--border-color); color: var(--text-muted); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600;">Actif</span>
+            @else
+                <form action="{{ route('payment.checkout') }}" method="POST" style="display:inline;">
+                    @csrf
+                    <input type="hidden" name="plan" value="Business">
+                    <button type="submit" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: auto; height: auto;">Prendre</button>
+                </form>
+            @endif
         </div>
     </div>
 </div>
@@ -114,7 +153,17 @@
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
                         <input type="text" readonly value="{{ route('shares.public', $link->token) }}" style="flex:1; border: 1px solid var(--border-color); border-radius:4px; padding:0.2rem; font-size:0.75rem; background: var(--surface-color);">
-                        <button onclick="navigator.clipboard.writeText('{{ route('shares.public', $link->token) }}'); alert('Copié !')" class="btn btn-outline" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Copier</button>
+                        <button onclick="navigator.clipboard.writeText('{{ route('shares.public', $link->token) }}'); showToast('Lien copié ! 📋')" class="btn btn-outline" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Copier</button>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; align-items: center;">
+                        <span>👁️ {{ $link->views_count }} vues</span>
+                        <span>Créé : {{ $link->created_at->format('d M H:i') }}</span>
+                        @if($link->expires_at)
+                            <span style="color: var(--danger);">Expire : {{ $link->expires_at->format('d M H:i') }}</span>
+                        @endif
+                        @if($link->password)
+                            <span style="color: var(--success); font-weight: 500;">🔒 Protégé</span>
+                        @endif
                     </div>
                 </div>
                 @endif
@@ -161,75 +210,31 @@
     </div>
 </div>
 
-<!-- Stripe Payment Modal Overlay -->
-<div class="modal-overlay" id="payment-modal" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 9999; padding: 1rem;">
-    <div class="modal-card bento-card" style="width: 100%; max-width: 400px; padding: 1.5rem; background: var(--bg-card); border-radius: 1rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-            <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                Paiement Stripe
-            </h3>
-            <button type="button" class="btn btn-outline" style="padding: 0.15rem 0.4rem; min-width: auto; height: auto;" onclick="closePaymentModal()">✕</button>
-        </div>
-        
-        <div style="background: var(--bg-color); border: 1px solid var(--border-color); padding: 0.75rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; font-size: 0.85rem;">
-            <div style="font-size: 0.75rem; color: var(--text-muted);">Abonnement choisi :</div>
-            <div id="payment-plan-name" style="font-weight: 700; color: var(--primary); margin-top: 0.15rem;">Plan Pro (100 Go)</div>
-            <div style="font-size: 1.1rem; font-weight: 800; margin-top: 0.35rem;" id="payment-plan-price">4.99 € / mois</div>
-        </div>
-
-        <form id="payment-modal-form" onsubmit="handleMockPayment(event)">
-            <div class="form-group" style="margin-bottom: 0.75rem;">
-                <label class="form-label" style="font-size: 0.75rem;">Numéro de carte (Stripe Test)</label>
-                <input type="text" class="form-input" required value="4242 4242 4242 4242" placeholder="4242 4242 4242 4242" style="width: 100%;">
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="font-size: 0.75rem;">Expiration</label>
-                    <input type="text" class="form-input" required value="12/28" placeholder="MM/AA" style="width: 100%;">
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="font-size: 0.75rem;">CVC</label>
-                    <input type="text" class="form-input" required value="424" placeholder="123" style="width: 100%;">
-                </div>
-            </div>
-            
-            <button type="submit" id="payment-submit-btn" class="btn btn-primary w-full" style="padding: 0.6rem;">Confirmer et Payer</button>
-        </form>
-    </div>
-</div>
-
 <script>
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+    }
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+}
+
 function openPasswordModal() {
-    document.getElementById('password-modal').style.display = 'flex';
+    openModal('password-modal');
 }
 
 function closePasswordModal() {
-    document.getElementById('password-modal').style.display = 'none';
-}
-
-function openPaymentModal(planName, price) {
-    document.getElementById('payment-plan-name').textContent = planName;
-    document.getElementById('payment-plan-price').textContent = price + ' € / mois';
-    document.getElementById('payment-modal').style.display = 'flex';
-}
-
-function closePaymentModal() {
-    document.getElementById('payment-modal').style.display = 'none';
-}
-
-function handleMockPayment(e) {
-    e.preventDefault();
-    const btn = document.getElementById('payment-submit-btn');
-    btn.disabled = true;
-    btn.textContent = "Traitement Stripe...";
-    setTimeout(() => {
-        alert("💳 Paiement de test Stripe réussi ! Espace disque augmenté.");
-        closePaymentModal();
-        btn.disabled = false;
-        btn.textContent = "Confirmer et Payer";
-    }, 1500);
+    closeModal('password-modal');
 }
 </script>
 @endsection

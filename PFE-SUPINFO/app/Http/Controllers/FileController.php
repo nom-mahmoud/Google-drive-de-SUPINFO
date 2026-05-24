@@ -59,6 +59,7 @@ class FileController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'files' => 'required|array',
             'files.*' => 'required|file|max:51200', // 50MB max as per UI
             'folder_id' => 'nullable|exists:folders,id',
         ]);
@@ -79,12 +80,28 @@ class FileController extends Controller
             }
 
             foreach ($request->file('files') as $uploadedFile) {
+                $originalName = $uploadedFile->getClientOriginalName();
+                $filename = pathinfo($originalName, PATHINFO_FILENAME);
+                $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+                
+                $name = $originalName;
+                $counter = 1;
+                
+                // Recursively check for naming conflicts and resolve by adding counter
+                while (File::where('user_id', $user->id)
+                    ->where('folder_id', $request->folder_id)
+                    ->where('name', $name)
+                    ->exists()) {
+                    $name = $filename . ' (' . $counter . ')' . ($extension ? '.' . $extension : '');
+                    $counter++;
+                }
+
                 $path = $uploadedFile->store('supfile/' . $user->id, 'local');
                 
                 File::create([
                     'user_id' => $user->id,
                     'folder_id' => $request->folder_id,
-                    'name' => $uploadedFile->getClientOriginalName(),
+                    'name' => $name,
                     'path' => $path,
                     'size' => $uploadedFile->getSize(),
                     'mime_type' => $uploadedFile->getMimeType(),
@@ -97,7 +114,7 @@ class FileController extends Controller
 
     public function download(File $file)
     {
-        if ($file->user_id !== Auth::id()) {
+        if ($file->user_id != Auth::id()) {
             abort(403);
         }
 
@@ -106,7 +123,7 @@ class FileController extends Controller
 
     public function destroy(File $file)
     {
-        if ($file->user_id !== Auth::id()) {
+        if ($file->user_id != Auth::id()) {
             abort(403);
         }
 
@@ -129,7 +146,7 @@ class FileController extends Controller
 
     public function preview(File $file)
     {
-        if ($file->user_id !== Auth::id()) {
+        if ($file->user_id != Auth::id()) {
             abort(403);
         }
 
@@ -169,7 +186,7 @@ class FileController extends Controller
 
     public function rename(Request $request, File $file)
     {
-        if ($file->user_id !== Auth::id()) {
+        if ($file->user_id != Auth::id()) {
             abort(403);
         }
 
@@ -186,7 +203,7 @@ class FileController extends Controller
 
     public function move(Request $request, File $file)
     {
-        if ($file->user_id !== Auth::id()) {
+        if ($file->user_id != Auth::id()) {
             abort(403);
         }
 

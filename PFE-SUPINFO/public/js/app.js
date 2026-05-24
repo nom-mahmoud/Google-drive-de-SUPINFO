@@ -14,9 +14,95 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressFill = document.getElementById('upload-progress-fill');
     const uploadText = document.getElementById('upload-text');
 
+    function uploadFiles(files) {
+        if (!progressContainer || !progressFill || !uploadText) return;
+        
+        progressContainer.style.display = 'block';
+        uploadText.textContent = `Préparation de l'envoi...`;
+        progressFill.style.width = '0%';
+        progressFill.style.backgroundColor = '';
+
+        const formData = new FormData();
+        
+        // Add files
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files[]', files[i]);
+        }
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('input[name="_token"]')?.value;
+        if (csrfToken) {
+            formData.append('_token', csrfToken);
+        }
+
+        // Add folder_id if present
+        const folderIdInput = document.querySelector('input[name="folder_id"]');
+        if (folderIdInput) {
+            formData.append('folder_id', folderIdInput.value);
+        }
+
+        const xhr = new XMLHttpRequest();
+        const uploadForm = document.getElementById('upload-form') || document.getElementById('mobile-upload-form');
+        const uploadUrl = uploadForm ? uploadForm.action : '/files';
+
+        xhr.open('POST', uploadUrl, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+        // Track progress
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                progressFill.style.width = percentComplete + '%';
+                if (percentComplete === 100) {
+                    uploadText.textContent = `Enregistrement et traitement par le serveur...`;
+                } else {
+                    uploadText.textContent = `Envoi en cours... ${percentComplete}%`;
+                }
+            }
+        });
+
+        // Response handling
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 400) {
+                // Parse the response to check if it contains error elements
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(xhr.responseText, 'text/html');
+                const hasError = doc.querySelector('.error-alert-container');
+                
+                if (hasError) {
+                    uploadText.textContent = `❌ Erreur lors de l'envoi.`;
+                    progressFill.style.backgroundColor = 'var(--danger)';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    uploadText.textContent = `✓ Fichiers envoyés avec succès !`;
+                    progressFill.style.width = '100%';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 800);
+                }
+            } else {
+                uploadText.textContent = `❌ Erreur lors de l'envoi. Espace insuffisant ou fichier trop volumineux.`;
+                progressFill.style.backgroundColor = 'var(--danger)';
+            }
+        };
+
+        xhr.onerror = function() {
+            uploadText.textContent = `❌ Erreur de connexion au serveur.`;
+            progressFill.style.backgroundColor = 'var(--danger)';
+        };
+
+        xhr.send(formData);
+    }
+
     if (uploadZone) {
         // Click to open file picker
-        uploadZone.addEventListener('click', () => fileInput && fileInput.click());
+        uploadZone.addEventListener('click', (e) => {
+            // Avoid click trigger recursion if clicking child buttons
+            if (e.target.closest('input, button, a')) return;
+            if (fileInput) fileInput.click();
+        });
 
         // Drag events
         uploadZone.addEventListener('dragover', (e) => {
@@ -30,31 +116,15 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             uploadZone.classList.remove('dragover');
             const files = e.dataTransfer.files;
-            if (files.length > 0) simulateUpload(files[0].name);
+            if (files.length > 0) uploadFiles(files);
         });
 
         // File input change
         if (fileInput) {
             fileInput.addEventListener('change', () => {
-                if (fileInput.files.length > 0) simulateUpload(fileInput.files[0].name);
+                if (fileInput.files.length > 0) uploadFiles(fileInput.files);
             });
         }
-    }
-
-    function simulateUpload(filename) {
-        if (!progressContainer || !progressFill || !uploadText) return;
-        progressContainer.style.display = 'block';
-        if (uploadText) uploadText.textContent = `Envoi de "${filename}"...`;
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += Math.random() * 15 + 5;
-            if (progress >= 100) {
-                progress = 100;
-                clearInterval(interval);
-                if (uploadText) uploadText.textContent = `✓ "${filename}" envoyé avec succès !`;
-            }
-            progressFill.style.width = progress + '%';
-        }, 200);
     }
 
     // =========================================================
@@ -131,6 +201,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileFileInput = document.getElementById('mobile-file-input');
     if (fab && mobileFileInput) {
         fab.addEventListener('click', () => mobileFileInput.click());
+        mobileFileInput.addEventListener('change', () => {
+            if (mobileFileInput.files.length > 0) uploadFiles(mobileFileInput.files);
+        });
     }
 
     // =========================================================

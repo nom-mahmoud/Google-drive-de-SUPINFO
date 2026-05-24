@@ -1,11 +1,11 @@
 @extends('layouts.web')
-@section('title', 'Paramètres')
+@section('title', 'Mon Profil')
 
 @section('content')
 <div class="file-manager-header" style="margin-bottom: 2.5rem;">
     <div>
-        <h1 class="page-title">Paramètres</h1>
-        <p style="color: var(--text-muted);">Gérez vos informations personnelles et vos liens de partage publics.</p>
+        <h1 class="page-title">Mon Profil</h1>
+        <p style="color: var(--text-muted);">Gérez vos informations personnelles, votre espace Stripe et vos partages.</p>
     </div>
 </div>
 
@@ -60,16 +60,31 @@
                 Plans & Stockage Cloud
             </h3>
             
+            @php
+                $planName = $user->plan ?? 'Standard';
+                $storageFormatted = '30 Go';
+                $planDesc = 'Inclus gratuitement avec votre inscription.';
+                if ($planName === 'Pro') {
+                    $storageFormatted = '100 Go';
+                    $planDesc = 'Espace disque étendu et partages optimisés.';
+                } elseif ($planName === 'Premium') {
+                    $storageFormatted = '500 Go';
+                    $planDesc = 'Stockage haute capacité et support prioritaire.';
+                } elseif ($planName === 'Business') {
+                    $storageFormatted = '2 To';
+                    $planDesc = 'Capacité maximale pour tous vos projets collaboratifs.';
+                }
+            @endphp
             <!-- Plan Actuel -->
             <div style="background: var(--primary-light); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
                 <div>
-                    <div style="font-weight: 700; color: var(--primary); font-size: 0.95rem;">Plan Actuel : Standard (30 Go)</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Inclus gratuitement avec votre inscription.</div>
+                    <div style="font-weight: 700; color: var(--primary); font-size: 0.95rem;">Plan Actuel : {{ $planName }} ({{ $storageFormatted }})</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">{{ $planDesc }}</div>
                 </div>
                 <span style="background: var(--primary); color: #fff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">Actif</span>
             </div>
             
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Achetez plus d'espace de stockage au-delà de 30 Go pour rentabiliser la plateforme :</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Ajustez ou faites évoluer votre abonnement cloud à tout moment :</p>
             
             <!-- Liste des autres plans -->
             <div style="display: flex; flex-direction: column; gap: 1rem;">
@@ -80,7 +95,15 @@
                         <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Plan Pro (100 Go)</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">4.99 € / mois • Partage étendu</div>
                     </div>
-                    <button type="button" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="openPaymentModal('Plan Pro (100 Go)', '4.99')">Prendre Pro</button>
+                    @if($planName === 'Pro')
+                        <span style="background: var(--border-color); color: var(--text-muted); padding: 0.4rem 0.8rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600;">Plan Actuel</span>
+                    @else
+                        <form action="{{ route('payment.checkout') }}" method="POST" style="display:inline;">
+                            @csrf
+                            <input type="hidden" name="plan" value="Pro">
+                            <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Prendre Pro</button>
+                        </form>
+                    @endif
                 </div>
                 
                 <!-- Plan Premium -->
@@ -89,7 +112,15 @@
                         <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Plan Premium (500 Go)</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">9.99 € / mois • Support prioritaire</div>
                     </div>
-                    <button type="button" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="openPaymentModal('Plan Premium (500 Go)', '9.99')">Prendre Premium</button>
+                    @if($planName === 'Premium')
+                        <span style="background: var(--border-color); color: var(--text-muted); padding: 0.4rem 0.8rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600;">Plan Actuel</span>
+                    @else
+                        <form action="{{ route('payment.checkout') }}" method="POST" style="display:inline;">
+                            @csrf
+                            <input type="hidden" name="plan" value="Premium">
+                            <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Prendre Premium</button>
+                        </form>
+                    @endif
                 </div>
 
                 <!-- Plan Business -->
@@ -98,7 +129,15 @@
                         <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Plan Business (2 To)</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">19.99 € / mois • Multi-utilisateurs</div>
                     </div>
-                    <button type="button" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="openPaymentModal('Plan Business (2 To)', '19.99')">Prendre Business</button>
+                    @if($planName === 'Business')
+                        <span style="background: var(--border-color); color: var(--text-muted); padding: 0.4rem 0.8rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600;">Plan Actuel</span>
+                    @else
+                        <form action="{{ route('payment.checkout') }}" method="POST" style="display:inline;">
+                            @csrf
+                            <input type="hidden" name="plan" value="Business">
+                            <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Prendre Business</button>
+                        </form>
+                    @endif
                 </div>
             </div>
         </div>
@@ -145,10 +184,11 @@
                         
                         <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--surface-color); border: 1px solid var(--border-color); padding: 0.5rem; border-radius: var(--radius-sm);">
                             <input type="text" readonly value="{{ route('shares.public', $link->token) }}" style="flex: 1; border: none; background: transparent; font-family: monospace; font-size: 0.8rem; color: var(--text-main); outline: none;">
-                            <button onclick="navigator.clipboard.writeText('{{ route('shares.public', $link->token) }}'); alert('Lien copié !')" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Copier</button>
+                            <button onclick="navigator.clipboard.writeText('{{ route('shares.public', $link->token) }}'); showToast('Lien copié ! 📋')" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Copier</button>
                         </div>
 
                         <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: var(--text-muted);">
+                            <span>👁️ {{ $link->views_count }} vues</span>
                             <span>Créé le : {{ $link->created_at->format('d M Y H:i') }}</span>
                             @if($link->expires_at)
                                 <span style="color: var(--danger);">Expire le : {{ $link->expires_at->format('d M Y H:i') }}</span>
@@ -200,75 +240,31 @@
     </div>
 </div>
 
-<!-- Stripe Payment Modal -->
-<div class="modal-overlay" id="payment-modal" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 9999;">
-    <div class="modal-card bento-card" style="width: 100%; max-width: 450px; padding: 2rem; background: var(--bg-card); border-radius: 1rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                Paiement Stripe Cloud
-            </h3>
-            <button type="button" class="btn btn-outline" style="padding: 0.2rem 0.5rem; min-width: auto; height: auto;" onclick="closePaymentModal()">✕</button>
-        </div>
-        
-        <div style="background: var(--bg-color); border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;">
-            <div style="font-size: 0.8rem; color: var(--text-muted);">Abonnement sélectionné :</div>
-            <div id="payment-plan-name" style="font-weight: 700; font-size: 1.1rem; color: var(--primary); margin-top: 0.25rem;">Plan Pro (100 Go)</div>
-            <div style="font-size: 1.25rem; font-weight: 800; margin-top: 0.5rem;" id="payment-plan-price">4.99 € <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted);">/ mois</span></div>
-        </div>
-
-        <form id="payment-modal-form" onsubmit="handleMockPayment(event)">
-            <div class="form-group" style="margin-bottom: 1rem;">
-                <label class="form-label">Numéro de carte (Stripe Test)</label>
-                <input type="text" class="form-input" required value="4242 4242 4242 4242" placeholder="4242 4242 4242 4242" style="width: 100%;">
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label">Expiration</label>
-                    <input type="text" class="form-input" required value="12/28" placeholder="MM/AA" style="width: 100%;">
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label">CVC</label>
-                    <input type="text" class="form-input" required value="424" placeholder="123" style="width: 100%;">
-                </div>
-            </div>
-            
-            <button type="submit" id="payment-submit-btn" class="btn btn-primary w-full" style="padding: 0.75rem;">Confirmer et Payer</button>
-        </form>
-    </div>
-</div>
-
 <script>
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+    }
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+}
+
 function openPasswordModal() {
-    document.getElementById('password-modal').style.display = 'flex';
+    openModal('password-modal');
 }
 
 function closePasswordModal() {
-    document.getElementById('password-modal').style.display = 'none';
-}
-
-function openPaymentModal(planName, price) {
-    document.getElementById('payment-plan-name').textContent = planName;
-    document.getElementById('payment-plan-price').innerHTML = price + ' € <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted);">/ mois</span>';
-    document.getElementById('payment-modal').style.display = 'flex';
-}
-
-function closePaymentModal() {
-    document.getElementById('payment-modal').style.display = 'none';
-}
-
-function handleMockPayment(e) {
-    e.preventDefault();
-    const btn = document.getElementById('payment-submit-btn');
-    btn.disabled = true;
-    btn.textContent = "Traitement Stripe en cours...";
-    setTimeout(() => {
-        alert("💳 Paiement de test Stripe réussi ! Votre espace disque a été augmenté.");
-        closePaymentModal();
-        btn.disabled = false;
-        btn.textContent = "Confirmer et Payer";
-    }, 1500);
+    closeModal('password-modal');
 }
 </script>
 @endsection

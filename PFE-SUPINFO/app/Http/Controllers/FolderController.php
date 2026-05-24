@@ -79,7 +79,7 @@ class FolderController extends Controller
 
     private function authorizeAccess(Folder $folder)
     {
-        if ($folder->user_id !== Auth::id()) {
+        if ($folder->user_id != Auth::id()) {
             abort(403);
         }
     }
@@ -137,7 +137,7 @@ class FolderController extends Controller
         // Security check: cannot move a folder into itself or into its own descendants
         if ($request->parent_id) {
             $targetFolder = Folder::findOrFail($request->parent_id);
-            if ($targetFolder->user_id !== Auth::id()) {
+            if ($targetFolder->user_id != Auth::id()) {
                 abort(403);
             }
 
